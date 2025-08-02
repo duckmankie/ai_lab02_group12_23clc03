@@ -1,3 +1,6 @@
+from sympy import symbols, Symbol, Or, And, Not, to_cnf
+from itertools import product
+
 def read_input_matrix(filename):
     matrix = []
     file = open(filename, 'r')
@@ -26,3 +29,94 @@ def write_output_matrix(matrix, filename):
                 line += ', '
         file.write(line + '\n')
     file.close()
+
+def generate_cnf_with_sympy(matrix):
+    rows = len(matrix)
+    cols = len(matrix[0])
+    variable_to_id = {}
+    id_to_variable = {}
+    clauses = []
+    var_count = 1
+
+    def make_var(pos1, pos2, bridge_count):
+        nonlocal var_count
+        key = (min(pos1, pos2), max(pos1, pos2), bridge_count)
+        if key not in variable_to_id:
+            var_name = f"x_{key[0][0]}_{key[0][1]}__{key[1][0]}_{key[1][1]}__{bridge_count}"
+            sym = Symbol(var_name)
+            variable_to_id[key] = (var_count, sym)
+            id_to_variable[var_count] = key
+            var_count += 1
+        return variable_to_id[key][1]
+
+    neighbor_map = {}
+
+    for r in range(rows):
+        for c in range(cols):
+            if matrix[r][c] == 0:
+                continue
+            pos = (r, c)
+            neighbor_map[pos] = []
+            for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+                nr, nc = r + dr, c + dc
+                while 0 <= nr < rows and 0 <= nc < cols:
+                    if matrix[nr][nc] > 0:
+                        neighbor_map[pos].append((nr, nc))
+                        break
+                    elif matrix[nr][nc] == 0:
+                        nr += dr
+                        nc += dc
+                    else:
+                        break
+
+    all_exprs = []
+
+    for pos in neighbor_map:
+        expected = matrix[pos[0]][pos[1]]
+        total_vars = []
+        for neighbor in neighbor_map[pos]:
+            a, b = sorted([pos, neighbor])
+            for count in [1, 2]:
+                var_sym = make_var(a, b, count)
+                total_vars.append( (count, var_sym) )
+
+        valid_combinations = []
+        for choice in product([0,1], repeat=len(total_vars)):
+            total = sum(weight for use, (weight, var) in zip(choice, total_vars) if use)
+            if total == expected:
+                term = []
+                for use, (weight, var) in zip(choice, total_vars):
+                    term.append(var if use else Not(var))
+                valid_combinations.append(And(*term) if term else True)
+
+        if valid_combinations:
+            all_exprs.append(Or(*valid_combinations))
+
+    full_expr = And(*all_exprs)
+    cnf_expr = to_cnf(full_expr, simplify=True)
+
+    def expr_to_clause_list(expr):
+        if expr.func == And:
+            return [list(flatten_clause(arg)) for arg in expr.args]
+        elif expr.func == Or:
+            return [list(flatten_clause(expr))]
+        else:
+            return [list(flatten_clause(expr))]
+
+    def flatten_clause(expr):
+        if expr.func == Or:
+            for arg in expr.args:
+                yield lit_to_int(arg)
+        else:
+            yield lit_to_int(expr)
+
+    def lit_to_int(lit):
+        for vid, sym in [(v, s) for (k, (v, s)) in variable_to_id.items()]:
+            if lit == sym:
+                return vid
+            if isinstance(lit, Not) and lit.args[0] == sym:
+                return -vid
+        raise ValueError(f"Unknown literal: {lit}")
+
+    final_clauses = expr_to_clause_list(cnf_expr)
+    return final_clauses, variable_to_id, id_to_variable
