@@ -199,3 +199,43 @@ def solve_with_astar(matrix):
             heapq.heappush(open_set, (neighbor.cost + neighbor.heuristic(), neighbor))
 
     return None
+
+def solve_with_backtracking(matrix):
+    start = State(matrix, bridges={}, cost=0)
+    visited = set()
+
+    def backtrack(state):
+        # Nếu đạt trạng thái đích thì trả về kết quả
+        if state.is_goal():
+            return state.to_output_matrix()
+        # Duyệt các trạng thái kế tiếp
+        for neighbor in state.get_neighbors():
+            # Để tránh lặp lại trạng thái, có thể dùng tuple hóa bridges
+            bridges_tuple = tuple(sorted(neighbor.bridges.items()))
+            if bridges_tuple in visited:
+                continue
+            visited.add(bridges_tuple)
+            result = backtrack(neighbor)
+            if result is not None:
+                return result
+            visited.remove(bridges_tuple)
+        return None
+
+    return backtrack(start)
+
+def solve_with_bruteforce(matrix):
+    start = State(matrix, bridges={}, cost=0)
+    stack = [start]
+    visited = set()
+
+    while stack:
+        current = stack.pop()
+        if current.is_goal():
+            return current.to_output_matrix()
+        bridges_tuple = tuple(sorted(current.bridges.items()))
+        if bridges_tuple in visited:
+            continue
+        visited.add(bridges_tuple)
+        for neighbor in current.get_neighbors():
+            stack.append(neighbor)
+    return None
