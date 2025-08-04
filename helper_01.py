@@ -87,3 +87,4 @@ def generate_cnf(matrix):
         clauses.extend(valid_combinations)
 
     return clauses, variable_to_id, id_to_variable
+
