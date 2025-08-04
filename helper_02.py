@@ -1,8 +1,53 @@
 from pysat.solvers import Solver
-from helper_01 import generate_cnf
+from helper_01 import generate_cnf, read_input_matrix, write_output_matrix
 from copy import deepcopy
 from collections import defaultdict,deque
-import heapq
+import heapq, time
+
+
+def run_solver(method, input_path, output_path):
+    matrix = read_input_matrix(input_path)
+
+    if method == "sat":
+        ok, result = solve_with_pysat(matrix)
+        if ok:
+            write_output_matrix(result, output_path)
+            print("Solved by SAT!")
+        else:
+            print("No solution using SAT.")
+    
+    elif method == "astar":
+        result = solve_with_astar(matrix)
+        if result:
+            write_output_matrix(result, output_path)
+            print("Solved by A*!")
+        else:
+            print("No solution using A*.")
+    
+    elif method == "brute":
+        result = solve_with_bruteforce(matrix)
+        if result:
+            write_output_matrix(result, output_path)
+            print("Solved by Brute-force!")
+        else:
+            print("No solution using Brute-force.")
+    
+    elif method == "backtrack":
+        result = solve_with_backtracking(matrix)
+        if result:
+            write_output_matrix(result, output_path)
+            print("Solved by Backtracking!")
+        else:
+            print("No solution using Backtracking.")
+    
+    else:
+        print(f"Unknown method: {method}")
+
+def timed_run_solver(method, input_path, output_path):
+    start = time.time()
+    run_solver(method, input_path, output_path)
+    end = time.time()
+    print(f"Thời gian chạy: {end - start:.4f} giây")
 
 def solve_with_pysat(matrix):
     clauses, var_map, id_map = generate_cnf(matrix)
