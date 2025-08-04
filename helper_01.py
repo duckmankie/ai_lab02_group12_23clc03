@@ -1,4 +1,3 @@
-from sympy import symbols, Symbol, Or, And, Not, to_cnf
 from itertools import product
 
 def read_input_matrix(filename):
